@@ -15,7 +15,7 @@ from PIL import Image
 import tqdm
 
 
-from create_signature_class_imgs_new import PERSONA_LIST 
+from create_signature_class_imgs import PERSONA_LIST 
 
 
 @dataclass
@@ -68,6 +68,12 @@ def parse_args():
         "--signature_dir",
         type=str,
         default="data/persona_signatures",
+        help=""
+    )
+    parser.add_argument(
+        "--n_images",
+        type=int,
+        default=400,
         help=""
     )
     return parser.parse_args()
@@ -133,8 +139,8 @@ def remove_signature(image, bbox, signature_file):
 
     
     # adjust bbox coords for yolo
-    orig_bbox[0] = orig_bbox[0] + (orig_bbox[2]/2) 
-    orig_bbox[1] = orig_bbox[1] + (orig_bbox[3]/2) 
+    orig_bbox[0] = orig_bbox[0] + (orig_bbox[2]/2)
+    orig_bbox[1] = orig_bbox[1] + (orig_bbox[3]/2)
       
     return image, orig_bbox
 
@@ -170,7 +176,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
     # 1. Create signed documents
     data_for_yolo = []
     personas = sample_personas(len(bbox))
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     new_img_path = out_path / f"{image_path.stem}_signed.png"
     for i, (persona_type, persona_name) in enumerate(personas.items()):
 
@@ -179,7 +185,6 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
         signature_file = sample_signature(sample_from, suffix)
 
         # bbox is x,y,w,h
-        print(image_path)
         image, new_bbox = remove_signature(image, bbox.iloc[i], signature_file)
         documents_metadata.append({"file_name": new_img_path.stem,
                                    "bbox": new_bbox,
@@ -200,7 +205,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
     # 2. Create unsigned documents
     data_for_yolo = []
     personas = sample_personas(len(bbox))
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     new_img_path = out_path / f"{image_path.stem}_unsigned.png"
     for i, (persona_type, persona_name) in enumerate(personas.items()):
 
@@ -230,7 +235,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
     data_for_yolo = []
     if len(bbox) == 2:
         # load image
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         new_img_path = out_path / f"{image_path.stem}_halfsigned.png"
 
         # 3.1 Insert signed persona
@@ -285,19 +290,26 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
     return pd.DataFrame(documents_metadata)
 
 
-def create_data_yaml(args):
-    data_yaml = f"""path: /home/marek/Personal/mama/mamaai_task1/{args.dataset_dir} 
+def create_data_yaml(dataset_dir: Path):
+    data_yaml = f"""path: /home/marek/Personal/mama/mamaai_task1/{dataset_dir}
 train: train/images
 val: valid/images
-test: test/images
 
 nc: 2
 names: ['unsigned', 'signed']
     """
-    with open(Path(args.dataset_dir) / "data.yaml", "w", encoding="utf-8") as f:
+    with open(Path(dataset_dir) / "data.yaml", "w", encoding="utf-8") as f:
         f.write(data_yaml)
-    
-    
+   
+    test_data_yaml = f"""path: /home/marek/Personal/mama/mamaai_task1/{dataset_dir}
+train: train/images
+val: test/images
+
+nc: 2
+names: ['unsigned', 'signed']
+    """
+    with open(Path(dataset_dir) / "test_data.yaml", "w", encoding="utf-8") as f:
+        f.write(test_data_yaml)
 
 
 
@@ -345,8 +357,8 @@ def main(args):
     # Create signed, unsigned and half-signed documents
     all_files = train_data_filtered["file_name"].unique()
     random.shuffle(all_files)
-    train_files = all_files[:10]
-    val_files = all_files[-10:]
+    train_files = all_files[:args.n_images]
+    val_files = all_files[args.n_images:args.n_images+100]
 
     # 4. Create train documents
     train_metadata = []
@@ -363,7 +375,7 @@ def main(args):
     for file in tqdm.tqdm(train_files, total=len(train_files)):
         image_path = Path(args.img_dir) / file
 
-        bbox = train_data_filtered[train_data_filtered["file_name"] == file]["bbox"] 
+        bbox = train_data_filtered[train_data_filtered["file_name"] == file]["bbox"]
 
         img_metadata = create_signed_documents(image_path, signature_split_dir, bbox, out_path)
         train_metadata.append(img_metadata)
@@ -386,7 +398,7 @@ def main(args):
     for file in tqdm.tqdm(val_files, total=len(val_files)):
         image_path = Path(args.img_dir) / file
 
-        bbox = train_data_filtered[train_data_filtered["file_name"] == file]["bbox"] 
+        bbox = train_data_filtered[train_data_filtered["file_name"] == file]["bbox"]
 
         img_metadata = create_signed_documents(image_path, signature_split_dir, bbox, out_path)
         train_metadata.append(img_metadata)
@@ -408,18 +420,18 @@ def main(args):
         labels_out_path.mkdir(parents=True, exist_ok=True)
 
     # Create signed, unsigned and half-signed documents
-    all_files = test_data_filtered["file_name"].unique()[:10]
+    all_files = test_data_filtered["file_name"].unique()[:100]
     for file in tqdm.tqdm(all_files, total=len(all_files)):
         image_path = Path(args.img_dir) / file
 
-        bbox = test_data_filtered[test_data_filtered["file_name"] == file]["bbox"] 
+        bbox = test_data_filtered[test_data_filtered["file_name"] == file]["bbox"]
 
         img_metadata = create_signed_documents(image_path, signature_split_dir , bbox, out_path)
         test_metadata.append(img_metadata)
 
     df = pd.concat(test_metadata)
     df.to_csv(Path(args.dataset_dir) / "test_clean.csv", encoding='utf-8', index=False)
-       
+
     # 7. create data.yaml
     create_data_yaml(args)
 

@@ -28,6 +28,12 @@ def parse_args():
 
 
 def signature_to_black_on_white(image_path: Path, output_path: Path):
+    """ Read signatures from downloaded dataset and adjust the contrast 
+
+    Args:
+        image_path (Path): Path to original signature image.
+        output_path (Path): Path to where the new image will be stored.
+    """
     gray = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     # Apply binary thresholding to isolate the signature
@@ -44,7 +50,7 @@ def main(args):
     signatures_test =  Path(args.signature_dataset)/"test"
     signatures_clean_train = Path(args.out_dir)/"train"
     signatures_clean_test = Path(args.out_dir)/"test"
-    
+
     # check for paths
     if not signatures_clean_train.exists():
         signatures_clean_train.mkdir(parents=True, exist_ok=True)
@@ -64,4 +70,3 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     main(args)
-

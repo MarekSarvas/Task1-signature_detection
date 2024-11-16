@@ -33,6 +33,15 @@ def parse_args():
 
 
 def create_persona_signatures(signature_path: Path, output_dir_path: Path, persona_name: str, persona_type: str):
+    """Loads a signature image and adds line with the person who should sign the contract underneath the signature.
+    Create white empty image for with line and person for unsigned documents.
+
+    Args:
+        signature_path (Path): Path to image containing signature
+        output_dir_path (Path): Where the created signatures will be stored
+        persona_name (str): E.g. employee or employer
+        persona_type (str): Type of the person on contract, e.g.: ee (for employee or tenant), er (for employer, lessor)
+    """
     # Open the original image
     img = Image.open(signature_path)
     img_width, img_height = img.size
@@ -67,11 +76,11 @@ def create_persona_signatures(signature_path: Path, output_dir_path: Path, perso
 
     for sign_img, sign_type in zip([img, img_empty], ["signed", "unsigned"]):
         new_img = Image.new("RGB", (new_img_width, new_img_height), "white")
-            
+     
         # 1. add signature or no_signature into new empty image,
         # centered horizontaly
         new_img.paste(sign_img, (img_x, 0))
-        
+
         # 2. add persona under the signature
         draw = ImageDraw.Draw(new_img)
         # Draw the black line
@@ -93,6 +102,12 @@ def create_persona_signatures(signature_path: Path, output_dir_path: Path, perso
 
 
 def create_signature_dirs(default_dir: Path):
+    """Creates all the necessary directories to store signatures with person
+    asigned.
+
+    Args:
+        default_dir (Path): Path to dir where the subdirs will be created.
+    """
     sub_dirs = ["ee_signed", "ee_unsigned","er_signed", "er_unsigned"]
     for sub_dir in sub_dirs:
         sub_dir_path = default_dir / sub_dir
@@ -105,22 +120,28 @@ def main(args):
 
     create_signature_dirs(personas_train)
     create_signature_dirs(personas_test)
-    
+
     # check for paths
     if not personas_train.exists():
         personas_train.mkdir(parents=True, exist_ok=True)
     if not personas_test.exists():
         personas_test.mkdir(parents=True, exist_ok=True)
-    
+
     # 1. Create train split signatures
     print("Creating train split...")
     signatures = Path(args.signature_dataset) / "train"
     for signature_path in signatures.rglob("*.png"):
         persona_id = random.randint(0, len(PERSONA_LIST)-1)
         # 1.a. create for "employee"
-        create_persona_signatures(signature_path, personas_train, PERSONA_LIST[persona_id]["ee"], "ee")
+        create_persona_signatures(signature_path,
+                                  personas_train,
+                                  PERSONA_LIST[persona_id]["ee"],
+                                  "ee")
         # 1.b. create for "employer"
-        create_persona_signatures(signature_path, personas_train, PERSONA_LIST[persona_id]["er"], "er")
+        create_persona_signatures(signature_path,
+                                  personas_train,
+                                  PERSONA_LIST[persona_id]["er"],
+                                  "er")
 
 
     # 2. Create test split signatures
@@ -129,9 +150,15 @@ def main(args):
     for signature_path in signatures.rglob("*.png"):
         persona_id = random.randint(0, len(PERSONA_LIST)-1)
         # 2.a. create for "employee"
-        create_persona_signatures(signature_path, personas_test, PERSONA_LIST[persona_id]["ee"], "ee")
+        create_persona_signatures(signature_path,
+                                  personas_test,
+                                  PERSONA_LIST[persona_id]["ee"],
+                                  "ee")
         # 2.b. create for "employer"
-        create_persona_signatures(signature_path, personas_test, PERSONA_LIST[persona_id]["er"], "er")
+        create_persona_signatures(signature_path,
+                                  personas_test,
+                                  PERSONA_LIST[persona_id]["er"],
+                                  "er")
 
 
 if __name__ == "__main__":
