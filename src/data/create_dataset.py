@@ -82,7 +82,7 @@ def get_img_names(dataset_dir: str) -> List[str]:
     and return list of the file names.
 
     Args:
-        dataset_dir (str): Path to the dataset
+        dataset_dir (str): Path to the dataset.
 
     Returns:
         List[str]: List of image file names.
@@ -95,11 +95,28 @@ def get_img_names(dataset_dir: str) -> List[str]:
 
 
 def filter_bbox_category(df: pd.DataFrame) -> pd.DataFrame:
+    """Removes all bounding boxes that are not signatures
+
+    Args:
+        df (pd.DataFrame): Dataset.
+
+    Returns:
+        pd.DataFrame: Dataset containing only signature bounding boxes.
+    """
     df = df[df["category_id"] == 1]
     return df
 
 
-def relative_to_pixel(bbox, img_width, img_height ):
+def relative_to_pixel(bbox: List, img_width: int, img_height: int) -> Bbox:
+    """
+    Args:
+        bbox (Bbox): Bounding box with relative coordinates.
+        img_width (int):
+        img_height (int):
+
+    Returns:
+        Bbox: Bounding box with pixel value coordinates.
+    """
     x = int(bbox[0] * img_width)
     y = int(bbox[1] * img_height)
     rect_width = int(bbox[2] * img_width)
@@ -131,6 +148,16 @@ def insert_signature(image, bbox, signature_file):
 
 
 def sample_personas(n_personas: int) -> Dict:
+    """
+    Args:
+        n_personas (int):
+
+    Raises:
+        Exception: If we want to sample more than 2 people which should not happen.
+
+    Returns:
+        Dict: Dictionary where keys are persona_id and value is persona name, e.g. "ee": "employee".
+    """
     persona_id = random.randint(0, len(PERSONA_LIST)-1)
 
     if n_personas == 1:
@@ -142,13 +169,28 @@ def sample_personas(n_personas: int) -> Dict:
     raise Exception("Cannot sample more than 2 people signature for the document.")
 
 
-def sample_signature(sign_dir: Path, suffix: str):
+def sample_signature(sign_dir: Path, suffix: str) -> str:
+    """
+    Args:
+        sign_dir (Path): Path to dir containing all signatures.
+        suffix (str): Sample only signatures with this file name suffix.
+
+    Returns:
+        str: Path to the signature image.
+    """
     sign_dir = Path(sign_dir)
     signature_file = random.choice(list(sign_dir.glob(suffix)))
     return signature_file
 
 
 def store_yolo_labels(image_data: List[Dict], img_stem: str, out_path: Path):
+    """Stores bbox coordinates and bbox label in format for yolo11
+
+    Args:
+        image_data (List[Dict]):
+        img_stem (str): Name of the image.
+        out_path (Path): Root for path where the labels will be stored.
+    """
     df = pd.DataFrame(image_data)
     df["is_signed"] = df["is_signed"].apply(lambda x: 1 if x == "signed" else 0)
 
@@ -157,6 +199,19 @@ def store_yolo_labels(image_data: List[Dict], img_stem: str, out_path: Path):
 
 
 def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd.DataFrame, out_path: Path) -> pd.DataFrame:
+    """From each document in dataset creates signed, unsigned and 
+    "half-signed" (if there are 2 people)  versions.
+    Stores the documents and all additional metadata.
+
+    Args:
+        image_path (Path):
+        signature_split_dir (Path): Path to dir with signature images for current split.
+        bbox (pd.DataFrame): DataFrame containing all bboxes in current image.
+        out_path (Path):
+
+    Returns:
+        pd.DataFrame: Metadata for all created documents.
+    """
     documents_metadata = []
     # 1. Create signed documents
     data_for_yolo = []
@@ -276,6 +331,8 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
 
 
 def create_data_yaml(dataset_dir: Path):
+    """
+    """
     data_yaml = f"""path: /home/marek/Personal/mama/mamaai_task1/{dataset_dir}
 train: train/images
 val: valid/images
