@@ -1,6 +1,5 @@
 """ THis module creates an initial dataset from manualy selected images.
 """
-from ctypes import resize
 import random
 import argparse
 from typing import List, Dict
@@ -11,11 +10,10 @@ import cv2
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
-from PIL import Image
 import tqdm
 
 
-from create_signature_class_imgs import PERSONA_LIST 
+from create_signature_class_imgs import PERSONA_LIST
 
 
 @dataclass
@@ -96,7 +94,6 @@ def get_img_names(dataset_dir: str) -> List[str]:
     return png_files
 
 
-
 def filter_bbox_category(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df["category_id"] == 1]
     return df
@@ -111,18 +108,7 @@ def relative_to_pixel(bbox, img_width, img_height ):
     return Bbox(x, y, rect_width, rect_height)
 
 
-
-def pixel_to_relative(bbox, img_width, img_height):
-    x_rel = bbox.x / img_width
-    y_rel = bbox.y / img_height
-
-    width_rel = bbox.w / img_width
-    height_rel = bbox.h / img_height
-
-    return [x_rel, y_rel, width_rel, height_rel]
-
-
-def remove_signature(image, bbox, signature_file):
+def insert_signature(image, bbox, signature_file):
     # 1. recalculate relative bbox coords into pixels
     img_width = image.shape[1]
     img_height = image.shape[0]
@@ -131,19 +117,17 @@ def remove_signature(image, bbox, signature_file):
     # x, y, height, length
     orig_bbox = np.array(bbox)
     bbox = relative_to_pixel(orig_bbox, img_width=img_width, img_height=img_height)
-    
+
     signature = cv2.imread(signature_file, cv2.IMREAD_GRAYSCALE)
     signature = cv2.resize(signature, (bbox.w, bbox.h))
 
     image[bbox.y:bbox.y+bbox.h, bbox.x:bbox.x+bbox.w] = signature
 
-    
     # adjust bbox coords for yolo
     orig_bbox[0] = orig_bbox[0] + (orig_bbox[2]/2)
     orig_bbox[1] = orig_bbox[1] + (orig_bbox[3]/2)
-      
-    return image, orig_bbox
 
+    return image, orig_bbox
 
 
 def sample_personas(n_personas: int) -> Dict:
@@ -152,11 +136,10 @@ def sample_personas(n_personas: int) -> Dict:
     if n_personas == 1:
         persona_type = random.choice(list(PERSONA_LIST[persona_id].keys()))
         return  {persona_type:PERSONA_LIST[persona_id][persona_type]}
-    elif n_personas == 2:
+    if n_personas == 2:
         return PERSONA_LIST[persona_id]
     # should not happen
-    else:
-        raise Exception("Cannot sample more than 2 people signature for the document.")
+    raise Exception("Cannot sample more than 2 people signature for the document.")
 
 
 def sample_signature(sign_dir: Path, suffix: str):
@@ -164,12 +147,14 @@ def sample_signature(sign_dir: Path, suffix: str):
     signature_file = random.choice(list(sign_dir.glob(suffix)))
     return signature_file
 
+
 def store_yolo_labels(image_data: List[Dict], img_stem: str, out_path: Path):
     df = pd.DataFrame(image_data)
     df["is_signed"] = df["is_signed"].apply(lambda x: 1 if x == "signed" else 0)
 
     label_path = out_path.parent/ "labels" / f"{img_stem}.txt"
     df.to_csv(label_path, index=False, header=False, sep=" ")
+
 
 def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd.DataFrame, out_path: Path) -> pd.DataFrame:
     documents_metadata = []
@@ -185,7 +170,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
         signature_file = sample_signature(sample_from, suffix)
 
         # bbox is x,y,w,h
-        image, new_bbox = remove_signature(image, bbox.iloc[i], signature_file)
+        image, new_bbox = insert_signature(image, bbox.iloc[i], signature_file)
         documents_metadata.append({"file_name": new_img_path.stem,
                                    "bbox": new_bbox,
                                    "is_signed": "signed",
@@ -213,7 +198,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
         suffix = f"*{persona_name}.png"
         signature_file = sample_signature(sample_from, suffix)
 
-        image, new_bbox = remove_signature(image, bbox.iloc[i], signature_file)
+        image, new_bbox = insert_signature(image, bbox.iloc[i], signature_file)
         documents_metadata.append({"file_name": new_img_path.stem,
                                    "bbox": new_bbox,
                                    "is_signed": "unsigned",
@@ -247,7 +232,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
         signature_file = sample_signature(sample_from, suffix)
 
         # add signature to the image
-        image, new_bbox = remove_signature(image, bbox.iloc[0], signature_file)
+        image, new_bbox = insert_signature(image, bbox.iloc[0], signature_file)
         documents_metadata.append({"file_name": new_img_path.stem,
                                    "bbox": new_bbox,
                                    "is_signed": "signed",
@@ -271,7 +256,7 @@ def create_signed_documents(image_path: Path, signature_split_dir: Path, bbox:pd
         signature_file = sample_signature(sample_from, suffix)
 
         # add signature to the image
-        image, new_bbox = remove_signature(image, bbox.iloc[1], signature_file)
+        image, new_bbox = insert_signature(image, bbox.iloc[1], signature_file)
         documents_metadata.append({"file_name": new_img_path.stem,
                                    "bbox": new_bbox,
                                    "is_signed": "unsigned",
@@ -300,7 +285,7 @@ names: ['unsigned', 'signed']
     """
     with open(Path(dataset_dir) / "data.yaml", "w", encoding="utf-8") as f:
         f.write(data_yaml)
-   
+
     test_data_yaml = f"""path: /home/marek/Personal/mama/mamaai_task1/{dataset_dir}
 train: train/images
 val: test/images
@@ -326,7 +311,7 @@ def main(args):
     test_data = pd.read_csv(args.test_metadata)
     id2img = pd.read_csv(args.id2img)
 
-    # select only signature bounding boxes 
+    # select only signature bounding boxes
     train_data = filter_bbox_category(train_data)
     test_data = filter_bbox_category(test_data)
 
