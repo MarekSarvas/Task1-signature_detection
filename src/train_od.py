@@ -85,6 +85,7 @@ def main(args):
         device=device,
         batch=8,
         patience=5,
+        name=args.exp_name
     )
 
     # Evaluate model performance on the validation set
