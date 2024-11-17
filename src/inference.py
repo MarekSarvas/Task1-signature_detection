@@ -31,7 +31,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def process_response(response_data: Dict, orig_img, out_path: str, verbose: bool = False):
+def process_response(response_data: Dict, orig_img, out_path: str, img_path: Path, verbose: bool = False):
+    doc_status = response_data.get("document_class", "N/A")
+    print(f"Document {img_path} is {doc_status}.")
     predictions = response_data.get("predictions", [])
 
     # Draw the bounding boxes on the image
@@ -41,15 +43,15 @@ def process_response(response_data: Dict, orig_img, out_path: str, verbose: bool
 
         x1 = prediction.get("x1", 0)
         y1 = prediction.get("y1", 0)
-        w = prediction.get("x2", 0)
-        h = prediction.get("y2", 0)
+        x2 = prediction.get("x2", 0)
+        y2 = prediction.get("y2", 0)
         confidence = prediction.get("confidence", 0)
         class_id = prediction.get("class_id", 0)
 
         # Draw bbox
         rectangle_color = (0, 0, 255)
         cv2.rectangle(orig_img, (int(x1), int(y1)),
-                    (int(w), int(h)), rectangle_color, 2)
+                    (int(x2), int(y2)), rectangle_color, 2)
         label = f"ID: {class_id}, Conf: {confidence:.2f}"
 
         # Draw bbox class info
@@ -98,7 +100,7 @@ def main(args):
     response = requests.post(
         endpoint_url,
         files={"file": (img_path.name, image_data, "image/png")},
-        timeout=1
+        timeout=10
     )
 
     # Check if the response is successful
@@ -107,7 +109,7 @@ def main(args):
         sys.exit()
 
     response_data = response.json()
-    process_response(response_data, image, args.out_file)
+    process_response(response_data, image, args.out_file, img_path)
 
 if __name__ == "__main__":
     args = parse_args()
