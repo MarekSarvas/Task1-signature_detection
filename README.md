@@ -12,7 +12,7 @@ python src/data/create_signature_class_imgs.py
 python src/data/create_dataset.py
 ```
 
-# Object detection
+# Object detection training
 1. Create model directory for trained models.
 ```bash
 mkdir models
@@ -28,3 +28,15 @@ Yolo11 medium model trained on 400 images for 100 epochs.
 Model | P     | R     | mAP50 | mAP50-95 |
 |-------|-------|-------|-------|----------|
 yolo11m_100e_400img | 0.979 | 0.973 | 0.991 | 0.812    |
+
+# Running inference
+1. Create and run docker object detection app:
+```bash
+make run
+```
+2. Send the document scan for evaluation. Run demonstration script with optional input/output images.
+```bash
+python src/inference.py \
+        --img_path path/to/document.png \
+        --out_file path/to/output/file.png
+``` 
