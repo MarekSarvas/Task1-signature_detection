@@ -2,7 +2,7 @@
 """
 import random
 import argparse
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from pathlib import Path
 import ast
 
@@ -125,7 +125,18 @@ def relative_to_pixel(bbox: List, img_width: int, img_height: int) -> Bbox:
     return Bbox(x, y, rect_width, rect_height)
 
 
-def insert_signature(image, bbox, signature_file):
+def insert_signature(image, bbox: str, signature_file: str) -> Tuple:
+    """Inserts previously created signatures with text in place of original
+    signature from downloaded dataset.
+
+    Args:
+        image : Document image.
+        bbox (str): Bbox of signature '[x, y, w, h]'
+        signature_file (str): Path to signature that will be inserted into image.
+
+    Returns:
+        Tuple: New image and corresponding bbox.
+    """
     # 1. recalculate relative bbox coords into pixels
     img_width = image.shape[1]
     img_height = image.shape[0]

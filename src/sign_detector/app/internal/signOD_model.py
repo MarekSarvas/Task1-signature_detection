@@ -54,7 +54,7 @@ class SignatureDetector:
         if len(labels) == 1:
             doc_class = "signed" if labels[0] == 1 else "not signed"
         else:
-            doc_class = "partialy signed"
+            doc_class = "partially signed"
 
         return predictions, doc_class
 
